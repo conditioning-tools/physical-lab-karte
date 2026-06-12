@@ -165,7 +165,7 @@ h1{font-size:13px;color:#006494;font-weight:700;margin-bottom:10px;}
     <div class="grid3">
       <div class="field"><label>握力・右（kg）</label><input id="i-grip-r" type="number" step="0.1" autocomplete="off" placeholder="28.4"></div>
       <div class="field"><label>握力・左（kg）</label><input id="i-grip-l" type="number" step="0.1" autocomplete="off" placeholder="26.1"></div>
-      <div class="field"><label>InBody 筋肉量（kg）</label><input id="i-muscle" type="number" step="0.1" autocomplete="off" placeholder="38.8"></div>
+      <div class="field"><label>InBody SMI・骨格筋指数（kg/m²）例：7.2</label><input id="i-muscle" type="number" step="0.01" autocomplete="off" placeholder="7.2"></div>
     </div>
   </div>
 
@@ -184,7 +184,6 @@ h1{font-size:13px;color:#006494;font-weight:700;margin-bottom:10px;}
 <div id="karte" class="panel">
   <div class="action-bar">
     <button class="back-btn" onclick="showTab('input')">← 入力に戻る</button>
-    <button class="save-btn" id="save-btn" onclick="saveToSheet()">スプレッドシートに保存</button>
     <button class="print-btn" onclick="window.print()">PDF保存・印刷</button>
   </div>
   <div id="karte-output"></div>
@@ -192,9 +191,6 @@ h1{font-size:13px;color:#006494;font-weight:700;margin-bottom:10px;}
 </div>
 
 <script>
-// GAS URL設定
-const GAS_URL = 'ここにGASのURLを貼り付ける';
-
 // タブ切替
 function showTab(tab) {
   document.querySelectorAll('.tab').forEach(function(t){ t.classList.remove('active'); });
@@ -472,15 +468,15 @@ function generateKarte() {
     + '<div class="cat-card"><div class="cat-name">筋力・筋量</div>'
     + '<div class="item-row"><div class="item-name">握力（右/左）</div><div class="stars">' + starHtml(s.gripR) + ' / ' + starHtml(s.gripL) + '</div></div>'
     + '<div style="font-size:8px;color:#aaa;margin-bottom:3px;">要注意：男性28kg未満・女性18kg未満（サルコペニア基準）</div>'
-    + '<div class="item-row"><div class="item-name">InBody 筋肉量</div><div class="stars" style="color:#333;font-size:11px;">' + (muscle ? muscle + 'kg' : '—') + '</div></div>'
-    + '<div style="font-size:8px;color:#aaa;margin-bottom:3px;">要注意：男性7.0・女性5.7 kg/m²未満（サルコペニア基準）</div>'
+    + '<div class="item-row"><div class="item-name">InBody SMI</div><div class="stars" style="color:#333;font-size:11px;">' + (muscle ? muscle + ' kg/m²' : '—') + '</div></div>'
+    + '<div style="font-size:8px;color:#aaa;margin-bottom:3px;">要注意：男性7.0・女性5.7 kg/m²未満（AWGS2019 SMI基準）</div>'
     + '</div>'
     + '</div>'
 
     // InBody
     + '<div class="slabel">測定値</div>'
     + '<div class="ib-grid">'
-    + '<div class="ib"><div class="ib-label">筋肉量</div><div class="ib-val">' + (muscle || '—') + ' kg</div></div>'
+    + '<div class="ib"><div class="ib-label">SMI（骨格筋指数）</div><div class="ib-val">' + (muscle || '—') + ' kg/m²</div></div>'
     + '<div class="ib"><div class="ib-label">握力（右/左）</div><div class="ib-val">' + (gripR || '—') + ' / ' + (gripL || '—') + ' kg</div></div>'
     + '<div class="ib"><div class="ib-label">2ステップ値</div><div class="ib-val">' + (step2 || '—') + '</div></div>'
     + '<div class="ib"><div class="ib-label">立位体前屈</div><div class="ib-val">' + (ffd !== '' ? ffd + ' cm' : '—') + '</div></div>'
@@ -501,48 +497,6 @@ function clearAll() {
   document.getElementById('i-gender').value = 'female';
 }
 
-// スプレッドシートに保存
-function saveToSheet() {
-  if (GAS_URL === 'ここにGASのURLを貼り付ける') {
-    alert('GASのURLが設定されていません。セットアップ手順書を確認してください。');
-    return;
-  }
-  if (!gv('i-name') || !gv('i-month')) {
-    alert('会員名と測定年月は必須です。');
-    return;
-  }
-  var btn = document.getElementById('save-btn');
-  btn.textContent = '保存中...';
-  btn.disabled = true;
-  var data = {
-    name: gv('i-name'), month: gv('i-month'), trainer: gv('i-trainer'),
-    age: gv('i-age'), gender: gv('i-gender'),
-    step2: gv('i-step2'), cs5: gv('i-cs5'),
-    ffd: gv('i-ffd'), shoulder: gv('i-shoulder'),
-    thoraxR: gv('i-thorax-r'), thoraxL: gv('i-thorax-l'),
-    balOpen: gv('i-bal-open'), balClose: gv('i-bal-close'),
-    birdR: gv('i-bird-r'), birdL: gv('i-bird-l'),
-    gripR: gv('i-grip-r'), gripL: gv('i-grip-l'),
-    muscle: gv('i-muscle'), comment: gv('i-comment')
-  };
-  fetch(GAS_URL, {
-    method: 'POST', mode: 'no-cors',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify(data)
-  }).then(function() {
-    btn.textContent = '✓ 保存しました！';
-    btn.style.background = '#4caf50';
-    setTimeout(function() {
-      btn.textContent = 'スプレッドシートに保存';
-      btn.style.background = '#2e7d52';
-      btn.disabled = false;
-    }, 3000);
-  }).catch(function() {
-    alert('保存に失敗しました。URLを確認してください。');
-    btn.textContent = 'スプレッドシートに保存';
-    btn.disabled = false;
-  });
-}
 </script>
 </body>
 </html>
